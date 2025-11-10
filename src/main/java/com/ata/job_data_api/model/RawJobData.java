@@ -29,7 +29,7 @@ public class RawJobData {
     private String yearsOfExperience;
 
     @JsonProperty("Salary")
-    private String rawSalary;
+    private String salary;
 
     @JsonProperty("Signing Bonus")
     private String signingBonus;

@@ -15,7 +15,7 @@ public class SalaryCleanupService {
     private static final double GBP_TO_THB_RATE = 42.57;
 
     public Long cleanseRawSalary(String rawSalary) {
-        log.info("Cleaning raw salary: {}", rawSalary);
+        log.debug("Cleaning raw salary: {}", rawSalary);
         if (StringUtils.isBlank(rawSalary)) {
             return 0L;
         }
@@ -25,7 +25,7 @@ public class SalaryCleanupService {
         var cleaned = rawSalary.replaceAll("[€$£,\\s]", "").toLowerCase();
         cleaned = StringUtils.replace(cleaned, "nok", "");
         cleaned = StringUtils.deleteWhitespace(cleaned);
-        log.info("Cleaned raw salary: {}, conversion rate {}", cleaned, conversionRate);
+        log.debug("Cleaned raw salary: {}, conversion rate {}", cleaned, conversionRate);
 
         var annualSalaryInBaseCurrency = 0.0;
 
