@@ -34,7 +34,7 @@ public class JobRepository {
         try (InputStream inputStream = resource.getInputStream()) {
             this.allRawJobs = objectMapper.readValue(
                     inputStream,
-                    new TypeReference<List<RawJobData>>() {}
+                    new TypeReference<>() {}
             );;
             log.info("Successfully loaded {} raw job records from JSON file.", allRawJobs.size());
 
