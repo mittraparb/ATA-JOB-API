@@ -1,6 +1,7 @@
 package com.ata.job_data_api.web;
 
 import com.ata.job_data_api.model.RawJobData;
+import com.ata.job_data_api.model.SalaryComparisonDTO;
 import com.ata.job_data_api.service.JobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,5 +30,10 @@ public class JobController {
     public Flux<RawJobData> getFilteredJobs(@RequestParam MultiValueMap<String, String> queryParams) {
         log.info("params ", queryParams);
         return jobService.findJobs(queryParams);
+    }
+
+    @GetMapping("/salary_compare")
+    public Flux<SalaryComparisonDTO> getSalaryComparison() {
+        return jobService.getSalaryComparisonData();
     }
 }
