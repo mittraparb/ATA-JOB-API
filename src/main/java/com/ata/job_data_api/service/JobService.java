@@ -10,7 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -116,5 +121,79 @@ public class JobService {
                 rawJob.getJobTitle(),
                 rawJob.getLocation()
         );
+    }
+
+    public Flux<Map<String, Object>> findJobsWithSparseFields(MultiValueMap<String, String> queryParams) {
+        Flux<RawJobData> rawJobs = repository.findAllRaw();
+
+        // 1. Apply Filtering (already done)
+        Predicate<RawJobData> combinedPredicate = buildFilterPredicate(queryParams);
+        rawJobs = rawJobs.filter(combinedPredicate);
+        return applySparseFields(rawJobs, queryParams);
+    }
+
+    private Flux<Map<String, Object>> applySparseFields(Flux<RawJobData> jobs, MultiValueMap<String, String> params) {
+        String fieldsStr = params.getFirst("fields");
+
+        if (StringUtils.isBlank(fieldsStr)) {
+            return jobs.map(this::mapAllFieldsToMap);
+        }
+
+        //list all requesting fields
+        List<String> requestedFields = Arrays.stream(fieldsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+
+        return jobs.map(job -> mapFieldsToMap(job, requestedFields));
+    }
+
+    private Map<String, Object> mapFieldsToMap(RawJobData job, List<String> fields) {
+        Map<String, Object> result = new HashMap<>();
+
+        for (String field : fields) {
+            // ใช้ field.toLowerCase() ในการตรวจสอบ
+            Object value = switch (field.toLowerCase()) {
+                case "timestamp" -> job.getTimestamp();
+                case "employer" -> job.getEmployer();
+                case "location" -> job.getLocation();
+                case "job_title" -> job.getJobTitle();
+                case "years_at_employer" -> job.getYearsAtEmployer();
+                case "years_of_experience" -> job.getYearsOfExperience();
+
+                // Special Cases:
+                case "salary" -> salaryCleanupService.cleanseRawSalary(job.getRawSalary()); // Cleaned Salary (THB)
+                case "raw_salary" -> job.getRawSalary(); // Raw Salary String
+
+                case "signing_bonus" -> job.getSigningBonus();
+                case "annual_bonus" -> job.getAnnualBonus();
+                case "annual_stock_value_bonus", "annual_stock_value/bonus" -> job.getAnnualStockValueBonus(); // รองรับ 2 key
+                case "gender" -> job.getGender();
+                case "additional_comments" -> job.getAdditionalComments();
+                default -> null;
+            };
+            if (value != null) {
+                result.put(field, value);
+            }
+        }
+        return result;
+    }
+
+    private Map<String, Object> mapAllFieldsToMap(RawJobData job) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("Timestamp", job.getTimestamp());
+        result.put("Employer", job.getEmployer());
+        result.put("Location", job.getLocation());
+        result.put("Job Title", job.getJobTitle());
+        result.put("Years at Employer", job.getYearsAtEmployer());
+        result.put("Years of Experience", job.getYearsOfExperience());
+        result.put("Salary (Cleaned THB)", salaryCleanupService.cleanseRawSalary(job.getRawSalary()));
+        result.put("Raw Salary", job.getRawSalary());
+        result.put("Signing Bonus", job.getSigningBonus());
+        result.put("Annual Bonus", job.getAnnualBonus());
+        result.put("Annual Stock Value/Bonus", job.getAnnualStockValueBonus());
+        result.put("Gender", job.getGender());
+        result.put("Additional Comments", job.getAdditionalComments());
+        return result;
     }
 }

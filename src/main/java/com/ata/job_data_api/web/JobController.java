@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
+import java.util.Map;
+
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/job_data")
@@ -27,9 +29,8 @@ public class JobController {
     }
 
     @GetMapping
-    public Flux<RawJobData> getFilteredJobs(@RequestParam MultiValueMap<String, String> queryParams) {
-        log.info("params ", queryParams);
-        return jobService.findJobs(queryParams);
+    public Flux<Map<String, Object>> getFilteredJobs(@RequestParam MultiValueMap<String, String> params) {
+        return jobService.findJobsWithSparseFields(params);
     }
 
     @GetMapping("/salary_compare")
