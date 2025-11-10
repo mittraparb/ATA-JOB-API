@@ -10,10 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -124,12 +121,12 @@ public class JobService {
     }
 
     public Flux<Map<String, Object>> findJobsWithSparseFields(MultiValueMap<String, String> queryParams) {
-        Flux<RawJobData> rawJobs = repository.findAllRaw();
-
-        // 1. Apply Filtering (already done)
-        Predicate<RawJobData> combinedPredicate = buildFilterPredicate(queryParams);
-        rawJobs = rawJobs.filter(combinedPredicate);
-        return applySparseFields(rawJobs, queryParams);
+        final Predicate<RawJobData> combinedPredicate = buildFilterPredicate(queryParams);
+        final Comparator<Map<String, Object>> comparator = createComparator(queryParams);
+        return repository.findAllRaw()
+                .filter(combinedPredicate)
+                .transform(jobs -> applySparseFields(jobs, queryParams))
+                .transform(flux -> comparator != null ? flux.sort(comparator) : flux);
     }
 
     private Flux<Map<String, Object>> applySparseFields(Flux<RawJobData> jobs, MultiValueMap<String, String> params) {
@@ -195,5 +192,35 @@ public class JobService {
         result.put("Gender", job.getGender());
         result.put("Additional Comments", job.getAdditionalComments());
         return result;
+    }
+
+    private Comparator<Map<String, Object>> createComparator(MultiValueMap<String, String> params) {
+        String sortField = params.getFirst("sort");
+        if (StringUtils.isBlank(sortField)) {
+            return null;
+        }
+
+        String sortType = params.getFirst("sort_type");
+        boolean isDescending = "DESC".equalsIgnoreCase(sortType);
+        final String finalSortField = sortField;
+
+        Comparator<Map<String, Object>> comparator = (map1, map2) -> {
+            Object val1 = map1.get(finalSortField);
+            Object val2 = map2.get(finalSortField);
+
+            if (val1 == null && val2 == null) return 0;
+            if (val1 == null) return -1;
+            if (val2 == null) return 1;
+
+            if (val1 instanceof Long) {
+                return ((Long) val1).compareTo((Long) val2);
+            } else if (val1 instanceof String) {
+                return ((String) val1).compareToIgnoreCase((String) val2);
+            }
+            return val1.toString().compareToIgnoreCase(val2.toString());
+        };
+
+        // 3. Apply DESC if requested
+        return isDescending ? comparator.reversed() : comparator;
     }
 }
